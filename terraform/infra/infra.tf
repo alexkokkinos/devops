@@ -85,7 +85,8 @@ resource "aws_security_group" "myapp_mysql_rds" {
       from_port = 3306
       to_port = 3306
       protocol = "tcp"
-      cidr_blocks = ["${aws_instance.web01.private_ip}","${aws_instance.web02.private_ip}"]
+      security_groups = ["${aws_security_group.web_server.id}"]
+      #cidr_blocks = ["${aws_instance.web01.private_ip}","${aws_instance.web02.private_ip}"]
   }
 
   egress {
@@ -119,8 +120,8 @@ resource "aws_instance" "web02" {
 }
 
 resource "aws_elb" "web-elb" {
-  name = "web-elb"
-  availability_zones = ["us-east-1b", "us-east-1c"]
+  name = "web-elb-infra"
+  # availability_zones = ["us-east-1c", "us-east-1b"]
 
   listener {
     instance_port = 80
@@ -139,6 +140,8 @@ resource "aws_elb" "web-elb" {
   }
 
   instances = ["${aws_instance.web01.id}","${aws_instance.web02.id}"]
+  subnets = ["${aws_subnet.public1a.id}","${aws_subnet.public1b.id}"]
+  security_groups = ["${aws_security_group.web_server.id}"]
 
   cross_zone_load_balancing = true
   idle_timeout = 400
@@ -163,7 +166,6 @@ resource "aws_db_instance" "web-rds-01" {
     identifier = "infradb-rds"
     allocated_storage = 10
     engine = "mysql"
-    engine_version = "5.6.17"
     instance_class = "db.t2.micro"
     name = "infradb"
     username = "${var.db_username}"
