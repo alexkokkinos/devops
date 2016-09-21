@@ -5,15 +5,15 @@ provider "aws" {
 	region = "us-east-1"
 }
 
-resource "aws_vpc" "alex-vpc" {
-     cidr_block = "10.100.0.0/16"
+resource "aws_vpc" "infra" {
+     cidr_block = "10.0.0.0/16"
 }
 
 resource "aws_subnet" "public1a" {
 	vpc_id =  "${aws_vpc.infra.id}"
-	cidr_block = "10.100.0.0/24"
+	cidr_block = "10.0.0.0/24"
 	map_public_ip_on_launch = "true"
-	availability_zone = "us-east-1a"
+	availability_zone = "us-east-1c"
 
 	tags {
 		Name = "Public 1A"
@@ -22,7 +22,7 @@ resource "aws_subnet" "public1a" {
 
 resource "aws_subnet" "public1b" {
 	vpc_id =  "${aws_vpc.infra.id}"
-	cidr_block = "10.100.0.0/24"
+	cidr_block = "10.0.1.0/24"
 	map_public_ip_on_launch = "true"
 	availability_zone = "us-east-1b"
 
@@ -48,7 +48,7 @@ resource "aws_security_group" "allow_ssh" {
 		from_port = 22
 		to_port = 22
 		protocol = "tcp"
-		cidr_blocks = ["65.60.217.219"]
+		cidr_blocks = ["65.60.217.219/32"]
 	}
 
 	tags {
@@ -77,7 +77,7 @@ resource "aws_security_group" "web_server" {
 }
 
 resource "aws_security_group" "myapp_mysql_rds" {
-  name = "web server"
+  name = "db server"
   description = "Allow access to MySQL RDS"
   vpc_id = "${aws_vpc.infra.id}"
 
@@ -97,22 +97,22 @@ resource "aws_security_group" "myapp_mysql_rds" {
 }
 
 resource "aws_instance" "web01" {
-    ami = "ami-408c7f28"
+    ami = "ami-6869aa05"
     instance_type = "t2.micro"
-    subnet_id = "${aws_subnet.public_1a.id}"
+    subnet_id = "${aws_subnet.public1a.id}"
     vpc_security_group_ids = ["${aws_security_group.web_server.id}","${aws_security_group.allow_ssh.id}"]
-    key_name = "myapp keypair"
+    key_name = "infra"
     tags {
         Name = "web01"
     }
 }
 
 resource "aws_instance" "web02" {
-    ami = "ami-408c7f28"
+    ami = "ami-6869aa05"
     instance_type = "t2.micro"
-    subnet_id = "${aws_subnet.public_1b.id}"
+    subnet_id = "${aws_subnet.public1b.id}"
     vpc_security_group_ids = ["${aws_security_group.web_server.id}","${aws_security_group.allow_ssh.id}"]
-    key_name = "myapp keypair"
+    key_name = "infra"
     tags {
         Name = "web02"
     }
@@ -120,7 +120,7 @@ resource "aws_instance" "web02" {
 
 resource "aws_elb" "web-elb" {
   name = "web-elb"
-  availability_zones = ["us-east-1a", "us-east-1b"]
+  availability_zones = ["us-east-1b", "us-east-1c"]
 
   listener {
     instance_port = 80
@@ -153,7 +153,7 @@ resource "aws_elb" "web-elb" {
 resource "aws_db_subnet_group" "myapp-db" {
     name = "main"
     description = "Our main group of subnets"
-    subnet_ids = ["${aws_subnet.public-1a.id}", "${aws_subnet.public-1b.id}"]
+    subnet_ids = ["${aws_subnet.public1a.id}", "${aws_subnet.public1b.id}"]
     tags {
         Name = "MyApp DB subnet group"
     }
