@@ -1,7 +1,7 @@
 # Configure AWS
 provider "aws" {
-	access_key = "{$var.aws_access_key}"
-	secret_key = "{$var.aws_secret_key}"
+	access_key = "${var.aws_access_key}"
+	secret_key = "${var.aws_secret_key}"
 	region = "us-east-1"
 }
 
@@ -160,15 +160,15 @@ resource "aws_db_subnet_group" "myapp-db" {
 }
 
 resource "aws_db_instance" "web-rds-01" {
-    identifier = "infra-rds"
+    identifier = "infradb-rds"
     allocated_storage = 10
     engine = "mysql"
     engine_version = "5.6.17"
-    instance_class = "db.t1.micro"
+    instance_class = "db.t2.micro"
     name = "infradb"
-    username = "{$var.db_username}"
-    password = "{$var.db_password}"
-    vpc_security_group_ids = ["${aws_security_group.myapp_mysql_rds.id"]
+    username = "${var.db_username}"
+    password = "${var.db_password}"
+    vpc_security_group_ids = ["${aws_security_group.myapp_mysql_rds.id}"]
     db_subnet_group_name = "${aws_db_subnet_group.myapp-db.id}"
     parameter_group_name = "default.mysql5.6"
 }
