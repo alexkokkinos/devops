@@ -7,6 +7,10 @@ provider "aws" {
 
 resource "aws_vpc" "infra" {
      cidr_block = "10.0.0.0/16"
+
+     tags {
+      Name = "infra-vpc"
+     }
 }
 
 resource "aws_subnet" "public1a" {
@@ -40,7 +44,7 @@ resource "aws_internet_gateway" "gw" {
 }
 
 resource "aws_security_group" "allow_ssh" {
-	name = "allow_all"
+	name = "allow_ssh"
 	description = "Allow inbound SSH traffic from my IP"
 	vpc_id = "${aws_vpc.infra.id}"
 
@@ -48,14 +52,14 @@ resource "aws_security_group" "allow_ssh" {
 		from_port = 22
 		to_port = 22
 		protocol = "tcp"
-		cidr_blocks = ["65.60.217.219/32"]
+		cidr_blocks = ["${var.my_ip}"]
 	}
 
   egress {
     from_port = 22
     to_port = 22
     protocol = "tcp"
-    cidr_blocks = ["65.60.217.219/32"]
+    cidr_blocks = ["${var.my_ip}"]
     # cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -82,6 +86,10 @@ resource "aws_security_group" "web_server" {
       protocol = "tcp"
       cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags {
+    Name = "Web Server"
+  }
 }
 
 resource "aws_security_group" "myapp_mysql_rds" {
@@ -102,6 +110,10 @@ resource "aws_security_group" "myapp_mysql_rds" {
       to_port = 65535
       protocol = "tcp"
       cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags {
+    Name = "DB Server"
   }
 }
 
@@ -166,7 +178,7 @@ resource "aws_db_subnet_group" "myapp-db" {
     description = "Our main group of subnets"
     subnet_ids = ["${aws_subnet.public1a.id}", "${aws_subnet.public1b.id}"]
     tags {
-        Name = "MyApp DB subnet group"
+        Name = "MyApp DB subnet"
     }
 }
 
@@ -181,4 +193,37 @@ resource "aws_db_instance" "web-rds-01" {
     vpc_security_group_ids = ["${aws_security_group.myapp_mysql_rds.id}"]
     db_subnet_group_name = "${aws_db_subnet_group.myapp-db.id}"
     parameter_group_name = "default.mysql5.6"
+}
+
+resource "aws_route_table" "internet_route" {
+  vpc_id = "${aws_vpc.infra.id}"
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = "${aws_internet_gateway.gw.id}"
+
+  }
+
+  tags {
+    Name = "Infra"
+  }
+}
+
+resource "aws_eip" "one" {
+  vpc = true
+  instance = "${aws_instance.web01.id}"
+}
+
+resource "aws_eip" "two" {
+  vpc = true
+  instance = "${aws_instance.web02.id}"
+}
+
+resource "aws_route_table_association" "one" {
+  subnet_id = "${aws_subnet.public1a.id}"
+  route_table_id = "${aws_route_table.internet_route.id}"
+}
+
+resource "aws_route_table_association" "two" {
+  subnet_id = "${aws_subnet.public1b.id}"
+  route_table_id = "${aws_route_table.internet_route.id}"
 }
